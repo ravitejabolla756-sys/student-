@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import { ToolLayout, LoadingSpinner, FileDropZone, ResultDisplay } from "@/components/tool-layout";
 import { getToolById } from "@/lib/tools-data";
 import { Download, Upload } from "lucide-react";
+import imageCompression from "browser-image-compression";
 
 function simulateProcessing(callback: () => void) {
   setTimeout(callback, 1000 + Math.random() * 500);
@@ -819,6 +821,280 @@ export function ImagePreview() {
             </Button>
           </div>
         )}
+      </div>
+    </ToolLayout>
+  );
+}
+
+export function AdvancedImageCompressor() {
+  const tool = getToolById("advanced-compressor")!;
+  const [file, setFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [targetSize, setTargetSize] = useState([500]);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<{ url: string; originalSize: number; compressedSize: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFiles = (files: File[]) => {
+    const f = files[0];
+    if (!f || !f.type.startsWith("image/")) return;
+    setFile(f);
+    setImageUrl(URL.createObjectURL(f));
+    const sizeInKB = Math.round(f.size / 1024);
+    setTargetSize([Math.min(sizeInKB - 50, Math.round(sizeInKB * 0.5))]);
+    setResult(null);
+  };
+
+  const compress = async () => {
+    if (!file) return;
+    
+    setLoading(true);
+    setProgress(0);
+    
+    try {
+      const targetSizeKB = targetSize[0];
+      const options = {
+        maxSizeMB: targetSizeKB / 1024,
+        maxWidthOrHeight: 4096,
+        useWebWorker: true,
+        onProgress: (p: number) => setProgress(Math.round(p * 100)),
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      
+      setResult({
+        url: URL.createObjectURL(compressedFile),
+        originalSize: file.size,
+        compressedSize: compressedFile.size
+      });
+    } catch (error) {
+      console.error("Compression error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  };
+
+  return (
+    <ToolLayout tool={tool}>
+      <div className="space-y-6">
+        {!imageUrl ? (
+          <FileDropZone accept="image/*" onFiles={handleFiles}>
+            <Upload className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Drop an image here or click to browse</p>
+            <p className="text-xs text-muted-foreground mt-2">Compress images to your exact target size</p>
+          </FileDropZone>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label className="text-sm mb-2 block">Original Image ({formatSize(file?.size || 0)})</Label>
+                <img src={imageUrl} alt="Original" className="max-w-full h-auto rounded-lg border border-border" />
+              </div>
+              
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Target Size: {targetSize[0]} KB</Label>
+                  <Slider
+                    value={targetSize}
+                    onValueChange={setTargetSize}
+                    min={10}
+                    max={Math.max(100, Math.round((file?.size || 1024) / 1024) - 10)}
+                    step={10}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Original: {formatSize(file?.size || 0)} → Target: ~{targetSize[0]} KB
+                  </p>
+                </div>
+                
+                <Button onClick={compress} disabled={loading} className="w-full">
+                  {loading ? "Compressing..." : "Compress to Target Size"}
+                </Button>
+                
+                <Button variant="outline" onClick={() => { setImageUrl(null); setFile(null); setResult(null); }} className="w-full">
+                  Upload New Image
+                </Button>
+              </div>
+            </div>
+
+            {loading && (
+              <div className="space-y-2">
+                <Progress value={progress} />
+                <p className="text-sm text-center text-muted-foreground">Compressing: {progress}%</p>
+              </div>
+            )}
+
+            {result && !loading && (
+              <ResultDisplay title="Compressed Image">
+                <div className="grid grid-cols-2 gap-4 mb-4 text-center">
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-sm text-muted-foreground">Original</p>
+                    <p className="font-bold">{formatSize(result.originalSize)}</p>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-sm text-muted-foreground">Compressed</p>
+                    <p className="font-bold text-primary">{formatSize(result.compressedSize)}</p>
+                  </div>
+                </div>
+                <p className="text-center text-sm text-muted-foreground mb-4">
+                  Reduced by {Math.round((1 - result.compressedSize / result.originalSize) * 100)}%
+                </p>
+                <img src={result.url} alt="Compressed" className="max-w-full h-auto rounded-lg border border-border mb-4" />
+                <Button asChild className="w-full">
+                  <a href={result.url} download="compressed-image.jpg">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Compressed Image
+                  </a>
+                </Button>
+              </ResultDisplay>
+            )}
+          </div>
+        )}
+      </div>
+    </ToolLayout>
+  );
+}
+
+export function ImageQualityController() {
+  const tool = getToolById("image-quality")!;
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [quality, setQuality] = useState([80]);
+  const [result, setResult] = useState<{ url: string; originalSize: number; compressedSize: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  const handleFiles = (files: File[]) => {
+    const file = files[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    setOriginalFile(file);
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+    setResult(null);
+    
+    const img = new Image();
+    img.onload = () => {
+      imageRef.current = img;
+    };
+    img.src = url;
+  };
+
+  const adjustQuality = () => {
+    if (!imageRef.current || !canvasRef.current || !originalFile) return;
+    
+    setLoading(true);
+    setTimeout(() => {
+      const canvas = canvasRef.current!;
+      const img = imageRef.current!;
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      
+      const compressedUrl = canvas.toDataURL("image/jpeg", quality[0] / 100);
+      const compressedSize = Math.round((compressedUrl.length - 22) * 3 / 4);
+      
+      setResult({
+        url: compressedUrl,
+        originalSize: originalFile.size,
+        compressedSize
+      });
+      setLoading(false);
+    }, 500);
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  };
+
+  return (
+    <ToolLayout tool={tool}>
+      <div className="space-y-6">
+        {!imageUrl ? (
+          <FileDropZone accept="image/*" onFiles={handleFiles}>
+            <Upload className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Drop an image here or click to browse</p>
+            <p className="text-xs text-muted-foreground mt-2">Precisely control image quality (1-100)</p>
+          </FileDropZone>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label className="text-sm mb-2 block">Original Image ({formatSize(originalFile?.size || 0)})</Label>
+                <img src={imageUrl} alt="Original" className="max-w-full h-auto rounded-lg border border-border" />
+              </div>
+              
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Quality: {quality[0]}%</Label>
+                  <Slider
+                    value={quality}
+                    onValueChange={setQuality}
+                    min={1}
+                    max={100}
+                    step={1}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>1% (Smallest)</span>
+                    <span>50%</span>
+                    <span>100% (Best)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Lower quality = smaller file size. 70-85% is recommended for web use.
+                  </p>
+                </div>
+                
+                <Button onClick={adjustQuality} disabled={loading} className="w-full">
+                  {loading ? "Processing..." : "Apply Quality"}
+                </Button>
+                
+                <Button variant="outline" onClick={() => { setImageUrl(null); setResult(null); }} className="w-full">
+                  Upload New Image
+                </Button>
+              </div>
+            </div>
+
+            {loading && <LoadingSpinner text="Adjusting quality..." />}
+
+            {result && !loading && (
+              <ResultDisplay title="Quality-Adjusted Image">
+                <div className="grid grid-cols-2 gap-4 mb-4 text-center">
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-sm text-muted-foreground">Original</p>
+                    <p className="font-bold">{formatSize(result.originalSize)}</p>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-sm text-muted-foreground">New Size</p>
+                    <p className="font-bold text-primary">{formatSize(result.compressedSize)}</p>
+                  </div>
+                </div>
+                <p className="text-center text-sm text-muted-foreground mb-4">
+                  {result.compressedSize < result.originalSize 
+                    ? `Reduced by ${Math.round((1 - result.compressedSize / result.originalSize) * 100)}%`
+                    : "Size increased due to format conversion"}
+                </p>
+                <img src={result.url} alt="Adjusted" className="max-w-full h-auto rounded-lg border border-border mb-4" />
+                <Button asChild className="w-full">
+                  <a href={result.url} download={`quality-${quality[0]}.jpg`}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Image ({quality[0]}% quality)
+                  </a>
+                </Button>
+              </ResultDisplay>
+            )}
+          </div>
+        )}
+        <canvas ref={canvasRef} className="hidden" />
       </div>
     </ToolLayout>
   );

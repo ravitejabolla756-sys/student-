@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, degrees } from "pdf-lib";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -149,10 +149,10 @@ export function PDFSplit() {
         const pdf1 = await PDFDocument.create();
         const pdf2 = await PDFDocument.create();
         
-        const pages1 = await pdf1.copyPages(pdf, [...Array(splitAt).keys()]);
+        const pages1 = await pdf1.copyPages(pdf, Array.from({ length: splitAt }, (_, i) => i));
         pages1.forEach(page => pdf1.addPage(page));
         
-        const pages2 = await pdf2.copyPages(pdf, [...Array(pageCount - splitAt).keys()].map(i => i + splitAt));
+        const pages2 = await pdf2.copyPages(pdf, Array.from({ length: pageCount - splitAt }, (_, i) => i + splitAt));
         pages2.forEach(page => pdf2.addPage(page));
         
         const bytes1 = await pdf1.save();
@@ -263,7 +263,7 @@ export function PDFReorder() {
     setFile(pdfFile);
     const arrayBuffer = await pdfFile.arrayBuffer();
     const pdf = await PDFDocument.load(arrayBuffer);
-    setPageOrder([...Array(pdf.getPageCount()).keys()]);
+    setPageOrder(Array.from({ length: pdf.getPageCount() }, (_, i) => i));
   };
 
   const moveUp = (index: number) => {
@@ -578,7 +578,7 @@ export function PDFExtract() {
           if (range.length === 2) {
             const start = parseInt(range[0]) - 1;
             const end = parseInt(range[1]) - 1;
-            return [...Array(end - start + 1).keys()].map(i => i + start);
+            return Array.from({ length: end - start + 1 }, (_, i) => i + start);
           }
           return [parseInt(part) - 1];
         }).filter(p => p >= 0 && p < pageCount);
@@ -692,7 +692,7 @@ export function PDFRotate() {
         const pages = pdf.getPages();
         pages.forEach(page => {
           const currentRotation = page.getRotation().angle;
-          page.setRotation({ type: "degrees", angle: currentRotation + rotation });
+          page.setRotation(degrees(currentRotation + rotation));
         });
         
         const pdfBytes = await pdf.save();
@@ -877,5 +877,389 @@ function MetadataRow({ label, value }: { label: string; value?: string }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value || "Not specified"}</span>
     </div>
+  );
+}
+
+export function PDFCompressor() {
+  const tool = getToolById("pdf-compressor")!;
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<{ blob: Blob; originalSize: number; compressedSize: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFiles = (files: File[]) => {
+    const pdfFile = files[0];
+    if (!pdfFile || pdfFile.type !== "application/pdf") return;
+    setFile(pdfFile);
+    setResult(null);
+  };
+
+  const compress = async () => {
+    if (!file) return;
+    
+    setLoading(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await PDFDocument.load(arrayBuffer);
+      const pdfBytes = await pdf.save({ useObjectStreams: true });
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      
+      setResult({
+        blob,
+        originalSize: file.size,
+        compressedSize: blob.size
+      });
+    } catch (error) {
+      console.error("Error compressing PDF:", error);
+    }
+    setLoading(false);
+  };
+
+  const download = () => {
+    if (result) {
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.download = "compressed.pdf";
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  };
+
+  return (
+    <ToolLayout tool={tool}>
+      <div className="space-y-6">
+        {!file ? (
+          <FileDropZone accept=".pdf" onFiles={handleFiles}>
+            <Upload className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Drop a PDF file here or click to browse</p>
+          </FileDropZone>
+        ) : (
+          <div className="space-y-6">
+            <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-3">
+              <FileText className="w-8 h-8 text-red-500" />
+              <div className="flex-1">
+                <p className="font-medium">{file.name}</p>
+                <p className="text-sm text-muted-foreground">Original size: {formatSize(file.size)}</p>
+              </div>
+            </div>
+
+            <Button onClick={compress} disabled={loading} className="w-full">
+              {loading ? "Compressing..." : "Compress PDF"}
+            </Button>
+
+            {loading && <LoadingSpinner text="Compressing PDF..." />}
+
+            {result && !loading && (
+              <ResultDisplay title="Compressed PDF">
+                <div className="grid grid-cols-2 gap-4 mb-4 text-center">
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-sm text-muted-foreground">Original</p>
+                    <p className="font-bold">{formatSize(result.originalSize)}</p>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-sm text-muted-foreground">Compressed</p>
+                    <p className="font-bold text-primary">{formatSize(result.compressedSize)}</p>
+                  </div>
+                </div>
+                <p className="text-center text-sm text-muted-foreground mb-4">
+                  {result.compressedSize < result.originalSize 
+                    ? `Reduced by ${Math.round((1 - result.compressedSize / result.originalSize) * 100)}%`
+                    : "PDF is already optimized"}
+                </p>
+                <Button onClick={download} className="w-full">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Compressed PDF
+                </Button>
+              </ResultDisplay>
+            )}
+
+            <Button variant="outline" onClick={() => { setFile(null); setResult(null); }} className="w-full">
+              Upload New PDF
+            </Button>
+          </div>
+        )}
+      </div>
+    </ToolLayout>
+  );
+}
+
+export function PDFPageExtractor() {
+  const tool = getToolById("pdf-page-extractor")!;
+  const [file, setFile] = useState<File | null>(null);
+  const [pageCount, setPageCount] = useState(0);
+  const [startPage, setStartPage] = useState("");
+  const [endPage, setEndPage] = useState("");
+  const [result, setResult] = useState<Blob | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFiles = async (files: File[]) => {
+    const pdfFile = files[0];
+    if (!pdfFile || pdfFile.type !== "application/pdf") return;
+    
+    setFile(pdfFile);
+    setResult(null);
+    
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdf = await PDFDocument.load(arrayBuffer);
+      const count = pdf.getPageCount();
+      setPageCount(count);
+      setStartPage("1");
+      setEndPage(String(count));
+    } catch (error) {
+      console.error("Error loading PDF:", error);
+    }
+  };
+
+  const extract = async () => {
+    if (!file) return;
+    
+    const start = parseInt(startPage) - 1;
+    const end = parseInt(endPage);
+    
+    if (start < 0 || end > pageCount || start >= end) return;
+    
+    setLoading(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const sourcePdf = await PDFDocument.load(arrayBuffer);
+      const newPdf = await PDFDocument.create();
+      
+      const pageIndices = Array.from({ length: end - start }, (_, i) => start + i);
+      const copiedPages = await newPdf.copyPages(sourcePdf, pageIndices);
+      copiedPages.forEach(page => newPdf.addPage(page));
+      
+      const pdfBytes = await newPdf.save();
+      setResult(new Blob([pdfBytes], { type: "application/pdf" }));
+    } catch (error) {
+      console.error("Error extracting pages:", error);
+    }
+    setLoading(false);
+  };
+
+  const download = () => {
+    if (result) {
+      const url = URL.createObjectURL(result);
+      const link = document.createElement("a");
+      link.download = `pages-${startPage}-${endPage}.pdf`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  return (
+    <ToolLayout tool={tool}>
+      <div className="space-y-6">
+        {!file ? (
+          <FileDropZone accept=".pdf" onFiles={handleFiles}>
+            <Upload className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Drop a PDF file here or click to browse</p>
+          </FileDropZone>
+        ) : (
+          <div className="space-y-6">
+            <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-3">
+              <FileText className="w-8 h-8 text-red-500" />
+              <div className="flex-1">
+                <p className="font-medium">{file.name}</p>
+                <p className="text-sm text-muted-foreground">{pageCount} pages</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Page</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={pageCount}
+                  value={startPage}
+                  onChange={(e) => setStartPage(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Page</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={pageCount}
+                  value={endPage}
+                  onChange={(e) => setEndPage(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground text-center">
+              Extracting pages {startPage} to {endPage} ({Math.max(0, parseInt(endPage || "0") - parseInt(startPage || "0") + 1)} pages)
+            </p>
+
+            <Button onClick={extract} disabled={loading} className="w-full">
+              {loading ? "Extracting..." : "Extract Pages"}
+            </Button>
+
+            {loading && <LoadingSpinner text="Extracting pages..." />}
+
+            {result && !loading && (
+              <ResultDisplay title="Extracted Pages">
+                <Button onClick={download} className="w-full">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Extracted PDF
+                </Button>
+              </ResultDisplay>
+            )}
+
+            <Button variant="outline" onClick={() => { setFile(null); setResult(null); }} className="w-full">
+              Upload New PDF
+            </Button>
+          </div>
+        )}
+      </div>
+    </ToolLayout>
+  );
+}
+
+export function PDFPageReorderTool() {
+  const tool = getToolById("pdf-page-reorder")!;
+  const [file, setFile] = useState<File | null>(null);
+  const [pages, setPages] = useState<number[]>([]);
+  const [result, setResult] = useState<Blob | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFiles = async (files: File[]) => {
+    const pdfFile = files[0];
+    if (!pdfFile || pdfFile.type !== "application/pdf") return;
+    
+    setFile(pdfFile);
+    setResult(null);
+    
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdf = await PDFDocument.load(arrayBuffer);
+      const count = pdf.getPageCount();
+      setPages(Array.from({ length: count }, (_, i) => i));
+    } catch (error) {
+      console.error("Error loading PDF:", error);
+    }
+  };
+
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    const newPages = [...pages];
+    [newPages[index - 1], newPages[index]] = [newPages[index], newPages[index - 1]];
+    setPages(newPages);
+  };
+
+  const moveDown = (index: number) => {
+    if (index === pages.length - 1) return;
+    const newPages = [...pages];
+    [newPages[index], newPages[index + 1]] = [newPages[index + 1], newPages[index]];
+    setPages(newPages);
+  };
+
+  const reorder = async () => {
+    if (!file) return;
+    
+    setLoading(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const sourcePdf = await PDFDocument.load(arrayBuffer);
+      const newPdf = await PDFDocument.create();
+      
+      const copiedPages = await newPdf.copyPages(sourcePdf, pages);
+      copiedPages.forEach(page => newPdf.addPage(page));
+      
+      const pdfBytes = await newPdf.save();
+      setResult(new Blob([pdfBytes], { type: "application/pdf" }));
+    } catch (error) {
+      console.error("Error reordering PDF:", error);
+    }
+    setLoading(false);
+  };
+
+  const download = () => {
+    if (result) {
+      const url = URL.createObjectURL(result);
+      const link = document.createElement("a");
+      link.download = "reordered.pdf";
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  return (
+    <ToolLayout tool={tool}>
+      <div className="space-y-6">
+        {!file ? (
+          <FileDropZone accept=".pdf" onFiles={handleFiles}>
+            <Upload className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Drop a PDF file here or click to browse</p>
+          </FileDropZone>
+        ) : (
+          <div className="space-y-6">
+            <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-3">
+              <FileText className="w-8 h-8 text-red-500" />
+              <div className="flex-1">
+                <p className="font-medium">{file.name}</p>
+                <p className="text-sm text-muted-foreground">{pages.length} pages</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Page Order (use arrows to reorder)</Label>
+              <div className="space-y-2 max-h-64 overflow-auto">
+                {pages.map((pageNum, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    <span className="flex-1">Page {pageNum + 1}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => moveUp(index)}
+                      disabled={index === 0}
+                    >
+                      <RotateCw className="w-4 h-4 rotate-90" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => moveDown(index)}
+                      disabled={index === pages.length - 1}
+                    >
+                      <RotateCw className="w-4 h-4 -rotate-90" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Button onClick={reorder} disabled={loading} className="w-full">
+              {loading ? "Reordering..." : "Apply New Order"}
+            </Button>
+
+            {loading && <LoadingSpinner text="Reordering pages..." />}
+
+            {result && !loading && (
+              <ResultDisplay title="Reordered PDF">
+                <Button onClick={download} className="w-full">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Reordered PDF
+                </Button>
+              </ResultDisplay>
+            )}
+
+            <Button variant="outline" onClick={() => { setFile(null); setResult(null); setPages([]); }} className="w-full">
+              Upload New PDF
+            </Button>
+          </div>
+        )}
+      </div>
+    </ToolLayout>
   );
 }

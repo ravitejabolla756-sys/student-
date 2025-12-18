@@ -34,10 +34,18 @@ import {
   FileQuestion,
   ListChecks,
   Lightbulb,
-  LucideIcon
+  LucideIcon,
+  Music,
+  Video,
+  Mic,
+  Play,
+  Volume2,
+  Film,
+  FileArchive,
+  Settings2
 } from "lucide-react";
 
-export type ToolCategory = "calculators" | "image" | "pdf" | "student" | "ai";
+export type ToolCategory = "calculators" | "image" | "pdf" | "student" | "ai" | "media";
 
 export interface Tool {
   id: string;
@@ -55,6 +63,7 @@ export const categoryInfo: Record<ToolCategory, { name: string; icon: LucideIcon
   pdf: { name: "PDF Tools", icon: FileText, color: "bg-red-500" },
   student: { name: "Student Tools", icon: GraduationCap, color: "bg-green-500" },
   ai: { name: "AI Tools", icon: Sparkles, color: "bg-amber-500" },
+  media: { name: "Media Tools", icon: Film, color: "bg-pink-500" },
 };
 
 export const tools: Tool[] = [
@@ -69,16 +78,18 @@ export const tools: Tool[] = [
   { id: "unit-converter", name: "Unit Converter", description: "Convert between different units", category: "calculators", icon: Ruler, keywords: ["length", "weight", "temperature", "convert"], path: "/tools/unit-converter" },
   { id: "time-duration", name: "Time Duration Calculator", description: "Calculate time between dates", category: "calculators", icon: Clock, keywords: ["hours", "minutes", "difference", "duration"], path: "/tools/time-duration" },
 
-  // IMAGE TOOLS (7)
+  // IMAGE TOOLS (9)
   { id: "image-resizer", name: "Image Resizer", description: "Resize images to any dimension", category: "image", icon: Image, keywords: ["resize", "scale", "dimension", "photo"], path: "/tools/image-resizer" },
   { id: "image-cropper", name: "Image Cropper", description: "Crop images to your needs", category: "image", icon: Crop, keywords: ["crop", "trim", "cut", "photo"], path: "/tools/image-cropper" },
   { id: "image-compressor", name: "Image Compressor", description: "Compress images to reduce size", category: "image", icon: Minimize2, keywords: ["compress", "optimize", "reduce", "size"], path: "/tools/image-compressor" },
+  { id: "advanced-compressor", name: "Advanced Image Compressor", description: "Compress to exact target size in KB", category: "image", icon: FileArchive, keywords: ["compress", "target", "kb", "size", "optimize"], path: "/tools/advanced-compressor" },
+  { id: "image-quality", name: "Image Quality Controller", description: "Adjust image quality with precision", category: "image", icon: Settings2, keywords: ["quality", "adjust", "slider", "control"], path: "/tools/image-quality" },
   { id: "jpg-to-png", name: "JPG to PNG", description: "Convert JPG images to PNG format", category: "image", icon: FileImage, keywords: ["convert", "format", "transparent"], path: "/tools/jpg-to-png" },
   { id: "png-to-jpg", name: "PNG to JPG", description: "Convert PNG images to JPG format", category: "image", icon: FileImage, keywords: ["convert", "format", "jpeg"], path: "/tools/png-to-jpg" },
   { id: "image-grayscale", name: "Image Grayscale", description: "Convert images to black and white", category: "image", icon: Palette, keywords: ["black", "white", "monochrome", "filter"], path: "/tools/image-grayscale" },
   { id: "image-preview", name: "Image Preview Tool", description: "Preview and analyze images", category: "image", icon: Eye, keywords: ["view", "analyze", "info", "metadata"], path: "/tools/image-preview" },
 
-  // PDF TOOLS (8)
+  // PDF TOOLS (11)
   { id: "pdf-merge", name: "PDF Merge", description: "Combine multiple PDFs into one", category: "pdf", icon: FilePlus, keywords: ["combine", "join", "merge", "document"], path: "/tools/pdf-merge" },
   { id: "pdf-split", name: "PDF Split", description: "Split PDF into multiple files", category: "pdf", icon: Scissors, keywords: ["separate", "divide", "extract"], path: "/tools/pdf-split" },
   { id: "pdf-reorder", name: "PDF Page Reorder", description: "Rearrange pages in a PDF", category: "pdf", icon: ArrowUpDown, keywords: ["arrange", "order", "pages", "sort"], path: "/tools/pdf-reorder" },
@@ -87,6 +98,18 @@ export const tools: Tool[] = [
   { id: "pdf-extract", name: "PDF Page Extract", description: "Extract specific pages from PDF", category: "pdf", icon: FileOutput, keywords: ["extract", "pages", "select"], path: "/tools/pdf-extract" },
   { id: "pdf-rotate", name: "PDF Rotate", description: "Rotate PDF pages", category: "pdf", icon: RotateCw, keywords: ["rotate", "orientation", "turn"], path: "/tools/pdf-rotate" },
   { id: "pdf-metadata", name: "PDF Metadata Viewer", description: "View PDF document information", category: "pdf", icon: Info, keywords: ["info", "properties", "details"], path: "/tools/pdf-metadata" },
+  { id: "pdf-compressor", name: "PDF Compressor", description: "Reduce PDF file size", category: "pdf", icon: Minimize2, keywords: ["compress", "reduce", "size", "optimize"], path: "/tools/pdf-compressor" },
+  { id: "pdf-page-extractor", name: "PDF Page Extractor", description: "Extract specific page ranges from PDF", category: "pdf", icon: FileOutput, keywords: ["extract", "pages", "range", "select"], path: "/tools/pdf-page-extractor" },
+  { id: "pdf-page-reorder", name: "PDF Page Reorder Tool", description: "Drag and drop to reorder PDF pages", category: "pdf", icon: ArrowUpDown, keywords: ["reorder", "arrange", "drag", "drop", "sort"], path: "/tools/pdf-page-reorder" },
+
+  // MEDIA TOOLS (7)
+  { id: "audio-compressor", name: "Audio Compressor", description: "Compress audio files to reduce size", category: "media", icon: Volume2, keywords: ["audio", "compress", "mp3", "reduce", "size"], path: "/tools/audio-compressor" },
+  { id: "audio-trim", name: "Audio Trimmer", description: "Trim audio files to specific duration", category: "media", icon: Music, keywords: ["audio", "trim", "cut", "clip"], path: "/tools/audio-trim" },
+  { id: "audio-speed", name: "Audio Speed Changer", description: "Change audio playback speed", category: "media", icon: Play, keywords: ["audio", "speed", "tempo", "fast", "slow"], path: "/tools/audio-speed" },
+  { id: "audio-converter", name: "Audio Converter", description: "Convert between audio formats", category: "media", icon: Mic, keywords: ["audio", "convert", "mp3", "wav", "aac"], path: "/tools/audio-converter" },
+  { id: "video-compressor", name: "Video Compressor", description: "Compress video files to reduce size", category: "media", icon: Film, keywords: ["video", "compress", "reduce", "size"], path: "/tools/video-compressor" },
+  { id: "video-trim", name: "Video Trimmer", description: "Trim video files to specific duration", category: "media", icon: Video, keywords: ["video", "trim", "cut", "clip"], path: "/tools/video-trim" },
+  { id: "video-to-audio", name: "Video to Audio Extractor", description: "Extract audio from video files", category: "media", icon: Music, keywords: ["video", "audio", "extract", "mp3"], path: "/tools/video-to-audio" },
 
   // STUDENT TOOLS (7)
   { id: "notes-manager", name: "Notes Manager", description: "Create and organize your notes", category: "student", icon: StickyNote, keywords: ["notes", "write", "organize", "study"], path: "/tools/notes-manager" },

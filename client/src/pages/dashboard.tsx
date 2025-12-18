@@ -23,7 +23,7 @@ const sidebarItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
-const categories: ToolCategory[] = ["calculators", "image", "pdf", "student", "ai"];
+const categories: ToolCategory[] = ["calculators", "image", "media", "pdf", "student", "ai"];
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -147,7 +147,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-sm">
                   <span className="text-muted-foreground">Categories:</span>{" "}
-                  <span className="font-semibold">5</span>
+                  <span className="font-semibold">6</span>
                 </div>
                 <div className="text-sm">
                   <span className="text-muted-foreground">Status:</span>{" "}

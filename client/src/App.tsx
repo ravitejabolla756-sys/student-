@@ -28,7 +28,9 @@ import {
   JpgToPng,
   PngToJpg,
   ImageGrayscale,
-  ImagePreview
+  ImagePreview,
+  AdvancedImageCompressor,
+  ImageQualityController
 } from "@/pages/tools/image-tools";
 
 import {
@@ -39,7 +41,10 @@ import {
   PDFViewer,
   PDFExtract,
   PDFRotate,
-  PDFMetadata
+  PDFMetadata,
+  PDFCompressor,
+  PDFPageExtractor,
+  PDFPageReorderTool
 } from "@/pages/tools/pdf-tools";
 
 import {
@@ -62,6 +67,16 @@ import {
   CheatSheetGenerator,
   TopicExplainer
 } from "@/pages/tools/ai-tools";
+
+import {
+  AudioCompressor,
+  AudioTrimmer,
+  AudioSpeedChanger,
+  AudioConverter,
+  VideoCompressor,
+  VideoTrimmer,
+  VideoToAudio
+} from "@/pages/tools/media-tools";
 
 function Router() {
   return (
@@ -88,6 +103,8 @@ function Router() {
       <Route path="/tools/image-resizer" component={ImageResizer} />
       <Route path="/tools/image-cropper" component={ImageCropper} />
       <Route path="/tools/image-compressor" component={ImageCompressor} />
+      <Route path="/tools/advanced-compressor" component={AdvancedImageCompressor} />
+      <Route path="/tools/image-quality" component={ImageQualityController} />
       <Route path="/tools/jpg-to-png" component={JpgToPng} />
       <Route path="/tools/png-to-jpg" component={PngToJpg} />
       <Route path="/tools/image-grayscale" component={ImageGrayscale} />
@@ -101,6 +118,17 @@ function Router() {
       <Route path="/tools/pdf-extract" component={PDFExtract} />
       <Route path="/tools/pdf-rotate" component={PDFRotate} />
       <Route path="/tools/pdf-metadata" component={PDFMetadata} />
+      <Route path="/tools/pdf-compressor" component={PDFCompressor} />
+      <Route path="/tools/pdf-page-extractor" component={PDFPageExtractor} />
+      <Route path="/tools/pdf-page-reorder" component={PDFPageReorderTool} />
+
+      <Route path="/tools/audio-compressor" component={AudioCompressor} />
+      <Route path="/tools/audio-trim" component={AudioTrimmer} />
+      <Route path="/tools/audio-speed" component={AudioSpeedChanger} />
+      <Route path="/tools/audio-converter" component={AudioConverter} />
+      <Route path="/tools/video-compressor" component={VideoCompressor} />
+      <Route path="/tools/video-trim" component={VideoTrimmer} />
+      <Route path="/tools/video-to-audio" component={VideoToAudio} />
 
       <Route path="/tools/notes-manager" component={NotesManager} />
       <Route path="/tools/todo-list" component={TodoList} />
